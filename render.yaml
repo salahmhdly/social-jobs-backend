@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: social-jobs-backend
+    env: node
+    plan: free # يمكنك التغيير إلى starter أو pro حسب الحاجة
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000 # Render يخصص منفذًا، لكن يمكننا تحديد منفذ افتراضي هنا
+      - key: FIREBASE_PROJECT_ID
+        sync: false # سيتم تعيينه يدوياً في لوحة تحكم Render
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false # سيتم تعيينه يدوياً في لوحة تحكم Render
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false # سيتم تعيينه يدوياً في لوحة تحكم Render
+      - key: FIREBASE_STORAGE_BUCKET
+        sync: false # سيتم تعيينه يدوياً في لوحة تحكم Render
+
+
