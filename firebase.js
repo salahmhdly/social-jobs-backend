@@ -2,21 +2,35 @@ const admin = require("firebase-admin");
 require("dotenv").config();
 const fs = require("fs");
 
-let serviceAccount;
+let serviceAccountConfig;
 
-// التحقق مما إذا كان مسار ملف الخدمة السري متاحًا (خاصة لبيئات النشر مثل Render)
+// الأولوية لملف الخدمة السري إذا كان المسار متاحًا
 if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
   try {
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
-    serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
+    serviceAccountConfig = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
     console.log("تم تحميل بيانات حساب الخدمة من ملف سري.");
   } catch (error) {
     console.error("خطأ في تحميل ملف حساب الخدمة السري:", error);
-    process.exit(1); // إيقاف التطبيق إذا فشل تحميل الملف السري
+    // إذا فشل تحميل الملف، سنحاول استخدام متغيرات البيئة
+    serviceAccountConfig = {
+      type: "service_account",
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_id: process.env.FIREBASE_CLIENT_ID,
+      auth_uri: "https://accounts.google.com/o/oauth2/auth",
+      token_uri: "https://oauth2.googleapis.com/token",
+      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+      client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${process.env.FIREBASE_CLIENT_EMAIL}`,
+      universe_domain: "googleapis.com",
+    };
+    console.log("تم تحميل بيانات حساب الخدمة من متغيرات البيئة (بعد فشل الملف السري).");
   }
-} else {
-  // استخدام متغيرات البيئة الفردية (للتطوير المحلي)
-  serviceAccount = {
+} else if (process.env.FIREBASE_PRIVATE_KEY) {
+  // إذا لم يكن هناك مسار للملف السري، نستخدم متغيرات البيئة المباشرة
+  serviceAccountConfig = {
     type: "service_account",
     project_id: process.env.FIREBASE_PROJECT_ID,
     private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
@@ -30,10 +44,13 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
     universe_domain: "googleapis.com",
   };
   console.log("تم تحميل بيانات حساب الخدمة من متغيرات البيئة.");
+} else {
+  console.error("لم يتم العثور على أي تهيئة لـ Firebase (لا ملف سري ولا متغيرات بيئة).");
+  process.exit(1); // إيقاف التطبيق إذا لم يتم العثور على تهيئة
 }
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert(serviceAccountConfig),
   storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
 });
 
